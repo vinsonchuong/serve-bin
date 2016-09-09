@@ -2,18 +2,6 @@ import register from 'test-inject';
 import Directory from 'directory-helpers';
 import fetch from 'node-fetch';
 
-async function writePlugin(name) {
-  await this.write({
-    [`node_modules/${name}/package.json`]: {
-      name
-    },
-    [`node_modules/${name}/index.js`]: `
-      exports.default = function() {
-      };
-    `
-  });
-}
-
 async function start() {
   this.server = this.spawn('npm', ['start']);
   await this.server.filter((output) => output.match(/Listening/));
