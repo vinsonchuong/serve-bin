@@ -1,7 +1,9 @@
 import {Server} from 'http';
+import * as zlib from 'zlib';
 import etag from 'etag';
 import mime from 'mime-types';
 import fresh from 'fresh';
+import compressible from 'compressible';
 import Directory from 'directory-helpers';
 import resolveFile from 'serve-bin/lib/resolve_file';
 
@@ -16,7 +18,6 @@ server.on('request', async (request, response) => {
       'cache-control': 'public, max-age=0',
       'last-modified': file.stats.mtime.toUTCString(),
       'etag': etag(file.stats),
-      'content-length': file.stats.size,
       'content-type': mime.contentType(file.type)
     };
 
@@ -26,7 +27,20 @@ server.on('request', async (request, response) => {
     } else if (request.method === 'HEAD') {
       response.writeHead(200, headers);
       response.end();
+    } else if (
+      'accept-encoding' in request.headers &&
+      compressible(headers['content-type']) &&
+      request.headers['accept-encoding'].includes('gzip')
+    ) {
+      headers['content-encoding'] = 'gzip';
+      response.writeHead(200, headers);
+      file.stream()
+        .pipe(zlib.createGzip({
+          level: zlib.Z_BEST_COMPRESSION
+        }))
+        .pipe(response);
     } else {
+      headers['content-length'] = file.stats.size;
       response.writeHead(200, headers);
       file.stream().pipe(response);
     }

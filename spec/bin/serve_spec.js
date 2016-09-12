@@ -57,7 +57,8 @@ describe('serve-bin', () => {
       `,
       'src/app.js': `
         console.log('Hello World!');
-      `
+      `,
+      'src/image.png': ''
     });
     await project::start();
 
@@ -70,7 +71,6 @@ describe('serve-bin', () => {
           'ETag': jasmine.stringMatching(/^W\/".*"$/),
           'Last-Modified': jasmine.stringMatching(
             new Date().toUTCString().slice(0, -6)),
-          'Content-Length': '39',
           'Content-Type': 'text/html; charset=utf-8'
         },
         body: await project.read('src/index.html')
@@ -82,10 +82,20 @@ describe('serve-bin', () => {
       {
         status: 200,
         headers: {
-          'Content-Length': '29',
           'Content-Type': 'application/javascript; charset=utf-8'
         },
         body: await project.read('src/app.js')
+      }
+    );
+
+    await assertResponse(
+      await fetch('http://localhost:8080/image.png'),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Length': '1'
+        }
       }
     );
   }));
@@ -183,6 +193,27 @@ describe('serve-bin', () => {
           'Content-Type': 'text/plain; charset=utf-8',
           'Content-Length': '0'
         }
+      }
+    );
+  }));
+
+  it('gzips responses for clients that accept gzip', inject(async ({project}) => {
+    await project::writeBoilerplate();
+    await project.write({
+      'src/index.html': `
+        <!doctype html>
+        <meta charset="utf-8">
+      `
+    });
+    await project::start();
+
+    await assertResponse(
+      await fetch('http://localhost:8080', {
+        headers: {'Accept-Encoding': 'gzip'}
+      }),
+      {
+        headers: {'Content-Encoding': 'gzip'},
+        body: await project.read('src/index.html')
       }
     );
   }));
