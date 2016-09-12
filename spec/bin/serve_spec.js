@@ -2,14 +2,6 @@ import register from 'test-inject';
 import Directory from 'directory-helpers';
 import fetch from 'node-fetch';
 
-async function start() {
-  this.server = this.spawn('npm', ['start']);
-  this.server.forEach((output) => {
-    process.stderr.write(output);
-  });
-  await this.server.filter((output) => output.match(/Listening/));
-}
-
 const inject = register({
   project: {
     setUp: () => new Directory('project'),
@@ -22,42 +14,43 @@ const inject = register({
   }
 });
 
+async function start() {
+  this.server = this.spawn('npm', ['start']);
+  this.server.forEach((output) => {
+    process.stderr.write(output);
+  });
+  await this.server.filter((output) => output.match(/Listening/));
+}
+
+async function writeBoilerplate() {
+  await this.write({
+    'package.json': {
+      name: 'project',
+      private: true,
+      scripts: {
+        start: 'serve'
+      }
+    }
+  });
+  await this.symlink('../node_modules', 'node_modules');
+}
+
+async function assertResponse(response, {status, headers = {}, body}) {
+  if (status) {
+    expect(response.status).toEqual(status);
+  }
+  for (const [name, value] of Object.entries(headers)) {
+    expect(response.headers.get(name)).toEqual(value);
+  }
+  if (typeof body !== 'undefined') {
+    expect(await response.text()).toEqual(body);
+  }
+}
+
 describe('serve-bin', () => {
-  it('serves src/index.html', inject(async ({project}) => {
+  it('serves static assets with correct headers', inject(async ({project}) => {
+    await project::writeBoilerplate();
     await project.write({
-      'package.json': {
-        name: 'project',
-        private: true,
-        scripts: {
-          start: 'serve'
-        }
-      },
-      'src/index.html': `
-        <!doctype html>
-        <meta charset="utf-8">
-      `
-    });
-    await project.symlink('../node_modules', 'node_modules');
-
-    await project::start();
-
-    const response = await fetch('http://localhost:8080');
-    expect(await response.text()).toBe([
-      '<!doctype html>',
-      '<meta charset="utf-8">',
-      ''
-    ].join('\n'));
-  }));
-
-  it('serves other static assets', inject(async ({project}) => {
-    await project.write({
-      'package.json': {
-        name: 'project',
-        private: true,
-        scripts: {
-          start: 'serve'
-        }
-      },
       'src/index.html': `
         <!doctype html>
         <meta charset="utf-8">
@@ -66,14 +59,131 @@ describe('serve-bin', () => {
         console.log('Hello World!');
       `
     });
-    await project.symlink('../node_modules', 'node_modules');
-
     await project::start();
 
-    const response = await fetch('http://localhost:8080/app.js');
-    expect(await response.text()).toBe([
-      "console.log('Hello World!');",
-      ''
-    ].join('\n'));
+    await assertResponse(
+      await fetch('http://localhost:8080'),
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=0',
+          'ETag': jasmine.stringMatching(/^W\/".*"$/),
+          'Last-Modified': jasmine.stringMatching(
+            new Date().toUTCString().slice(0, -6)),
+          'Content-Length': '39',
+          'Content-Type': 'text/html; charset=utf-8'
+        },
+        body: await project.read('src/index.html')
+      }
+    );
+
+    await assertResponse(
+      await fetch('http://localhost:8080/app.js'),
+      {
+        status: 200,
+        headers: {
+          'Content-Length': '29',
+          'Content-Type': 'application/javascript; charset=utf-8'
+        },
+        body: await project.read('src/app.js')
+      }
+    );
+  }));
+
+  it('correctly resolves paths', inject(async ({project}) => {
+    await project::writeBoilerplate();
+    await project.write({
+      'src/contains space.html': `
+        <!doctype html>
+        <meta charset="utf-8">
+      `
+    });
+    await project::start();
+
+    await assertResponse(
+      await fetch('http://localhost:8080/contains%20space.html'),
+      {status: 200}
+    );
+
+    await assertResponse(
+      await fetch('http://localhost:8080/folder/../contains space.html'),
+      {status: 200}
+    );
+  }));
+
+  it('responds to HEAD requests with only headers', inject(async ({project}) => {
+    await project::writeBoilerplate();
+    await project.write({
+      'src/index.html': `
+        <!doctype html>
+        <meta charset="utf-8">
+      `
+    });
+    await project::start();
+
+    await assertResponse(
+      await fetch(
+        'http://localhost:8080',
+        {method: 'HEAD'}
+      ),
+      {body: ''}
+    );
+  }));
+
+  it('supports conditional GET', inject(async ({project}) => {
+    await project::writeBoilerplate();
+    await project.write({
+      'src/index.html': `
+        <!doctype html>
+        <meta charset="utf-8">
+      `
+    });
+    await project::start();
+
+    const response = await fetch('http://localhost:8080');
+
+    await assertResponse(
+      await fetch(
+        'http://localhost:8080',
+        {
+          headers: {
+            'If-None-Match': response.headers.get('ETag')
+          }
+        }
+      ),
+      {status: 304}
+    );
+  }));
+
+  it('responds 404 for missing files', inject(async ({project}) => {
+    await project::writeBoilerplate();
+    await project::start();
+
+    await assertResponse(
+      await fetch('http://localhost:8080'),
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Length': '0'
+        }
+      }
+    );
+  }));
+
+  it('responds 404 for files outside of the root directory', inject(async ({project}) => {
+    await project::writeBoilerplate();
+    await project::start();
+
+    await assertResponse(
+      await fetch('http://localhost:8080/../package.json'),
+      {
+        status: 404,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Content-Length': '0'
+        }
+      }
+    );
   }));
 });
