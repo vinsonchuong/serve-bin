@@ -17,7 +17,7 @@ server.on('request', async (request, response) => {
       'last-modified': file.stats.mtime.toUTCString(),
       'etag': etag(file.stats),
       'content-length': file.stats.size,
-      'content-type': mime.contentType(file.extension)
+      'content-type': mime.contentType(file.type)
     };
 
     if (fresh(request.headers, headers)) {
