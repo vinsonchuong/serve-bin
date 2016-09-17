@@ -23,7 +23,6 @@ export default async function(request) {
     }
 
     return {
-      path: filePath,
       type: path.extname(filePath),
       stats: fileStats,
       stream: () => fs.createReadStream(filePath)

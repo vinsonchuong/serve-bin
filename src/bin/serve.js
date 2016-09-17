@@ -28,9 +28,8 @@ server.on('request', async (request, response) => {
       response.writeHead(200, headers);
       response.end();
     } else if (
-      'accept-encoding' in request.headers &&
-      compressible(headers['content-type']) &&
-      request.headers['accept-encoding'].includes('gzip')
+      (request.headers['accept-encoding'] || '').includes('gzip') &&
+      compressible(headers['content-type'])
     ) {
       headers['content-encoding'] = 'gzip';
       response.writeHead(200, headers);
