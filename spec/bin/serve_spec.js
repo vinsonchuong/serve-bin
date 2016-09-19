@@ -181,22 +181,6 @@ describe('serve-bin', () => {
     );
   }));
 
-  it('responds 404 for files outside of the root directory', inject(async ({project}) => {
-    await project::writeBoilerplate();
-    await project::start();
-
-    await assertResponse(
-      await fetch('http://localhost:8080/../package.json'),
-      {
-        status: 404,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Content-Length': '0'
-        }
-      }
-    );
-  }));
-
   it('gzips responses for clients that accept gzip', inject(async ({project}) => {
     await project::writeBoilerplate();
     await project.write({

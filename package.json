@@ -29,7 +29,8 @@
     "etag": "^1.7.0",
     "mime-types": "^2.1.11",
     "fresh": "^0.3.0",
-    "compressible": "^2.0.8"
+    "compressible": "^2.0.8",
+    "serve-static-assets": "^0.0.1"
   },
   "devDependencies": {
     "dist-es6": "^0.2.4",
