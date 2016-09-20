@@ -2,6 +2,12 @@ import register from 'test-inject';
 import Directory from 'directory-helpers';
 import fetch from 'node-fetch';
 
+async function sleep(ms) {
+  await new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 const inject = register({
   project: {
     setUp: () => new Directory('project'),
@@ -14,12 +20,6 @@ const inject = register({
     }
   }
 });
-
-async function sleep(ms) {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
 
 async function start() {
   this.server = this.spawn('npm', ['start']);
