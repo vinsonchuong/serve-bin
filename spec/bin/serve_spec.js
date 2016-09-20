@@ -7,7 +7,7 @@ const inject = register({
     setUp: () => new Directory('project'),
     tearDown: async (project) => {
       if ('server' in project) {
-        project.server.process.kill();
+        await project.exec('kill', [project.server.process.pid]);
       }
       await project.remove();
     }
