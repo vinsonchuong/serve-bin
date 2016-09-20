@@ -15,7 +15,6 @@ const inject = register({
       if ('server' in project) {
         const serverPid = await project.exec('pgrep', ['-f', 'node.*serve$']);
         await project.exec('kill', [serverPid]);
-        await sleep(1000);
       }
       await project.remove();
     }
