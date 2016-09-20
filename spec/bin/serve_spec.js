@@ -13,7 +13,8 @@ const inject = register({
     setUp: () => new Directory('project'),
     tearDown: async (project) => {
       if ('server' in project) {
-        await project.exec('kill', [project.server.process.pid]);
+        const serverPid = await project.exec('pgrep', ['-f', 'node.*serve$']);
+        await project.exec('kill', [serverPid]);
         await sleep(1000);
       }
       await project.remove();
