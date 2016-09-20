@@ -7,12 +7,19 @@ const inject = register({
     setUp: () => new Directory('project'),
     tearDown: async (project) => {
       if ('server' in project) {
-        await project.exec('kill', [project.server.process.pid]);
+        project.server.process.kill();
+        await sleep(1000);
       }
       await project.remove();
     }
   }
 });
+
+async function sleep(ms) {
+  await new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 async function start() {
   this.server = this.spawn('npm', ['start']);
