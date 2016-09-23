@@ -62,16 +62,12 @@ describe('serve-bin', () => {
       'src/index.html': `
         <!doctype html>
         <meta charset="utf-8">
-      `,
-      'src/app.js': `
-        console.log('Hello World!');
-      `,
-      'src/image.png': ''
+      `
     });
     await project::start();
 
     await assertResponse(
-      await fetch('http://localhost:8080'),
+      await fetch('http://localhost:8080/index.html'),
       {
         status: 200,
         headers: {
@@ -82,28 +78,6 @@ describe('serve-bin', () => {
           'Content-Type': 'text/html; charset=utf-8'
         },
         body: await project.read('src/index.html')
-      }
-    );
-
-    await assertResponse(
-      await fetch('http://localhost:8080/app.js'),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/javascript; charset=utf-8'
-        },
-        body: await project.read('src/app.js')
-      }
-    );
-
-    await assertResponse(
-      await fetch('http://localhost:8080/image.png'),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'image/png',
-          'Content-Length': '1'
-        }
       }
     );
   }));
