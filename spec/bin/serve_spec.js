@@ -40,7 +40,6 @@ async function writeBoilerplate() {
       }
     }
   });
-  await this.symlink('../node_modules', 'node_modules');
 }
 
 async function assertResponse(response, {status, headers = {}, body}) {
