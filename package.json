@@ -24,19 +24,17 @@
     "test": "eslint && jasmine"
   },
   "dependencies": {
-    "esnext-async": "^0.0.8",
-    "directory-helpers": "^0.1.5",
+    "directory-helpers": "^0.1.6",
     "etag": "^1.7.0",
-    "mime-types": "^2.1.11",
+    "mime-types": "^2.1.12",
     "fresh": "^0.3.0",
-    "compressible": "^2.0.8",
-    "serve-static-assets": "^0.0.1"
+    "compressible": "^2.0.8"
   },
   "devDependencies": {
     "dist-es6": "^0.2.4",
     "jasmine-es6": "^0.3.1",
     "eslint-defaults": "^0.3.1",
     "test-inject": "^0.0.4",
-    "node-fetch": "^1.6.1"
+    "node-fetch": "^1.6.3"
   }
 }

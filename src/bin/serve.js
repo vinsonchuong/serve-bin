@@ -6,16 +6,27 @@ import mime from 'mime-types';
 import fresh from 'fresh';
 import compressible from 'compressible';
 import Directory from 'directory-helpers';
-import serveStaticAssets from 'serve-static-assets';
 
 const root = new Directory('.');
 const server = new Server();
 
 server.on('request', async (request, response) => {
-  const file = await serveStaticAssets(root, {
-    path: decodeURIComponent(url.parse(request.url).pathname)
-      .replace(/^\/*/, '')
-  });
+  let file;
+  const packageJson = await root.read('package.json');
+  for (const dependency of Object.keys(packageJson.devDependencies)) {
+    if (dependency.startsWith('serve-')) {
+      /* eslint-disable global-require, lines-around-comment */
+      file = await require(await root.resolve(dependency))(root, {
+        path: decodeURIComponent(url.parse(request.url).pathname)
+          .replace(/^\/*/, '')
+      });
+      /* eslint-enable global-require, lines-around-comment */
+    }
+
+    if (file) {
+      break;
+    }
+  }
 
   if (file) {
     const headers = {

@@ -2,33 +2,15 @@ import register from 'test-inject';
 import Directory from 'directory-helpers';
 import fetch from 'node-fetch';
 
-async function sleep(ms) {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
 const inject = register({
   project: {
     setUp: () => new Directory('project'),
     tearDown: async (project) => {
-      if ('server' in project) {
-        const serverPid = await project.exec('pgrep', ['-f', 'node.*serve$']);
-        await project.exec('kill', [serverPid]);
-        await sleep(1000);
-      }
+      await project.stop();
       await project.remove();
     }
   }
 });
-
-async function start() {
-  this.server = this.spawn('npm', ['start']);
-  this.server.forEach((output) => {
-    process.stderr.write(output);
-  });
-  await this.server.filter((output) => output.match(/Listening/));
-}
 
 async function writeBoilerplate() {
   await this.write({
@@ -37,8 +19,24 @@ async function writeBoilerplate() {
       private: true,
       scripts: {
         start: 'serve'
-      }
+      },
+      devDependencies: {}
     }
+  });
+}
+
+async function writePlugin(name, implementation) {
+  const packageJson = await this.read('package.json');
+  await this.write({
+    [`node_modules/${name}/package.json`]: {
+      name
+    },
+    [`node_modules/${name}/index.js`]: implementation,
+    'package.json': Object.assign(packageJson, {
+      devDependencies: Object.assign(packageJson.devDependencies, {
+        [name]: '0.0.1'
+      })
+    })
   });
 }
 
@@ -63,7 +61,18 @@ describe('serve-bin', () => {
         <meta charset="utf-8">
       `
     });
-    await project::start();
+    await project::writePlugin('serve-index', `
+      const fs = require('fs');
+      module.exports = function(root, request) {
+        return root.stat('src/index.html')
+          .then((stats) => ({
+            type: '.html',
+            stats,
+            stream: fs.createReadStream('src/index.html')
+          }));
+      };
+    `);
+    await project.start(/Listening/);
 
     await assertResponse(
       await fetch('http://localhost:8080/index.html'),
@@ -89,7 +98,18 @@ describe('serve-bin', () => {
         <meta charset="utf-8">
       `
     });
-    await project::start();
+    await project::writePlugin('serve-index', `
+      const fs = require('fs');
+      module.exports = function(root, request) {
+        return root.stat(root.path('src', request.path))
+          .then((stats) => ({
+            type: '.html',
+            stats,
+            stream: fs.createReadStream(root.path('src', request.path))
+          }));
+      };
+    `);
+    await project.start(/Listening/);
 
     await assertResponse(
       await fetch('http://localhost:8080/contains%20space.html'),
@@ -110,7 +130,18 @@ describe('serve-bin', () => {
         <meta charset="utf-8">
       `
     });
-    await project::start();
+    await project::writePlugin('serve-index', `
+      const fs = require('fs');
+      module.exports = function(root, request) {
+        return root.stat('src/index.html')
+          .then((stats) => ({
+            type: '.html',
+            stats,
+            stream: fs.createReadStream('src/index.html')
+          }));
+      };
+    `);
+    await project.start(/Listening/);
 
     await assertResponse(
       await fetch(
@@ -129,7 +160,18 @@ describe('serve-bin', () => {
         <meta charset="utf-8">
       `
     });
-    await project::start();
+    await project::writePlugin('serve-index', `
+      const fs = require('fs');
+      module.exports = function(root, request) {
+        return root.stat('src/index.html')
+          .then((stats) => ({
+            type: '.html',
+            stats,
+            stream: fs.createReadStream('src/index.html')
+          }));
+      };
+    `);
+    await project.start(/Listening/);
 
     const response = await fetch('http://localhost:8080');
 
@@ -148,7 +190,13 @@ describe('serve-bin', () => {
 
   it('responds 404 for missing files', inject(async ({project}) => {
     await project::writeBoilerplate();
-    await project::start();
+    await project::writePlugin('serve-index', `
+      const fs = require('fs');
+      module.exports = function(root, request) {
+        return null;
+      };
+    `);
+    await project.start(/Listening/);
 
     await assertResponse(
       await fetch('http://localhost:8080'),
@@ -170,7 +218,18 @@ describe('serve-bin', () => {
         <meta charset="utf-8">
       `
     });
-    await project::start();
+    await project::writePlugin('serve-index', `
+      const fs = require('fs');
+      module.exports = function(root, request) {
+        return root.stat('src/index.html')
+          .then((stats) => ({
+            type: '.html',
+            stats,
+            stream: fs.createReadStream('src/index.html')
+          }));
+      };
+    `);
+    await project.start(/Listening/);
 
     await assertResponse(
       await fetch('http://localhost:8080', {
